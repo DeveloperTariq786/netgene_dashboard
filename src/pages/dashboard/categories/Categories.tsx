@@ -239,7 +239,7 @@ export default function Categories() {
         onConfirm={handleDeleteCategory}
         isLoading={isDeleting}
         title="Delete Category"
-        description="Are you sure you want to delete this category? This action cannot be undone and will affect all associated subcategories."
+        description="Are you sure you want to delete this category? This cannot be undone."
         confirmText="Delete Category"
       />
     </div>
