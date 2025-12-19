@@ -10,6 +10,7 @@ import { FormPageHeader, FormActions } from "@/components/shared";
 import { ROUTES } from "@/core/config/routes";
 import { userService } from "@/features/dashboard/users";
 import { Loader } from "@/components/loader/Loader";
+import { useAuth } from "@/features/auth/hooks";
 
 type UserFormData = {
   first_name: string;
@@ -33,6 +34,12 @@ export default function UserAdd() {
     role: "admin",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user } = useAuth();
+
+  const canAddSuperAdmin = user?.permission?.[0]?.can_add_superadmin ?? false;
+  const canAddAdmin = user?.permission?.[0]?.can_add_admin ?? false;
+
+  const isRoleAllowed = (formData.role === 'admin' && canAddAdmin) || (formData.role === 'superadmin' && canAddSuperAdmin);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -197,6 +204,8 @@ export default function UserAdd() {
           cancelPath={ROUTES.DASHBOARD.USERS}
           submitLabel="Add User"
           isSubmitting={isSubmitting}
+          disabled={!isRoleAllowed}
+          disabledTooltip={!isRoleAllowed ? `You are ${user?.role}, you cannot add ${formData.role}s` : undefined}
         />
       </form>
       {isSubmitting && <Loader fullScreen message="Adding user..." />}

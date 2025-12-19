@@ -1,20 +1,51 @@
 // Inventory-specific TypeScript types and interfaces
 
 export interface InventoryItem {
-    id: string;
-    productId: string;
-    sku: string;
-    quantity: number;
-    reorderLevel: number;
-    status: "in_stock" | "low_stock" | "out_of_stock";
+    _id: string;
+    product_stock: number;
+    product_code: string;
+    stock_status: string;
     createdAt: string;
-    updatedAt: string;
+    product_name: string;
+    product_url: string;
+    dimension_name: string;
 }
 
-export interface InventoryFormData {
-    productId: string;
-    sku: string;
-    quantity: number;
-    reorderLevel: number;
-    status: "in_stock" | "low_stock" | "out_of_stock";
+export interface InventoryListResponse {
+    success: boolean;
+    message: string;
+    currentPage: number;
+    limit: number;
+    totalPages: number;
+    data: InventoryItem[];
+}
+
+export interface InventoryListParams {
+    page?: number;
+    limit?: number;
+}
+
+export interface UpdateInventoryData {
+    product_stock: number;
+    date: string;
+}
+
+export interface UpdateInventoryResponse {
+    success: boolean;
+    message: string;
+}
+
+export interface BulkInventoryItem {
+    inventory_id: string;
+    product_stock: number;
+    date: string;
+}
+
+export interface BulkUpdateInventoryData {
+    bulk_inventory: BulkInventoryItem[];
+}
+
+export interface BulkUpdateInventoryResponse {
+    success: boolean;
+    message: string;
 }

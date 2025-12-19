@@ -2,10 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/core/hooks/use-toast";
 import { ROUTES } from "@/core/config/routes";
@@ -14,22 +11,17 @@ import {
   ImageUploadSingle,
   ImageUploadMultiple,
   FormActions,
-  TagInput
+  TagInput,
+  RichTextEditor
 } from "@/components/shared";
 import { Loader } from "@/components/loader/Loader";
-import { brandService } from "@/features/dashboard/brands";
-import { categoryService } from "@/features/dashboard/categories";
-import { subcategoryService } from "@/features/dashboard/subcategories";
+import { productService, useProductStore } from "@/features/dashboard/products";
 
 type ProductFormData = {
   name: string;
   description: string;
-  brand: string;
-  category: string;
-  subCategory: string;
+  manufacturer: string;
   tags: string[];
-  quantity: number;
-  dimensionType: string;
   price: number;
   discount: number;
   newBadge: boolean;
@@ -41,136 +33,111 @@ type ProductFormData = {
   coverImageFiles: File[];
 };
 
-type Brand = {
-  _id: string;
-  brand_name: string;
-  brand_logo: string;
-};
-
-type Category = {
-  category_id: string;
-  category_name: string;
-  category_logo: string;
-};
-
-type Subcategory = {
-  sub_category_id: string;
-  sub_category_name: string;
-  sub_category_logo: string;
-  category_name: string;
-  parent_category?: string; // Derived field for filtering
-};
-
-const dimensionTypes = ["KG", "LITRE", "DOZEN", "PIECE"];
-
 export default function ProductEdit() {
   const navigate = useNavigate();
   const { productId } = useParams();
   const { toast } = useToast();
 
-  const [brands, setBrands] = useState<Brand[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { currentProduct } = useProductStore();
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Initialize form with current product data from store
   const [formData, setFormData] = useState<ProductFormData>({
-    name: "",
-    description: "",
-    brand: "",
-    category: "",
-    subCategory: "",
-    tags: [],
-    quantity: 0,
-    dimensionType: "PIECE",
-    price: 0,
-    discount: 0,
-    newBadge: false,
-    salesBadge: false,
-    featured: false,
-    avatar: "",
+    name: currentProduct?.product_name || "",
+    description: currentProduct?.product_description || "",
+    manufacturer: currentProduct?.manufacturer || "",
+    tags: currentProduct?.tags?.map(t => t.tag_name) || [],
+    price: currentProduct?.product_price || 0,
+    discount: currentProduct?.discount_precentage || 0,
+    newBadge: currentProduct?.isNew === "true",
+    salesBadge: currentProduct?.sales === "true",
+    featured: currentProduct?.featured === "true",
+    avatar: currentProduct?.avatar || "",
     avatarFile: null,
-    coverImages: [],
+    coverImages: currentProduct?.cover_images?.map(img => img.url) || [],
     coverImageFiles: [],
   });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        const [brandsRes, categoriesRes, subcategoriesRes] = await Promise.all([
-          brandService.listBrands(),
-          categoryService.listCategories(),
-          subcategoryService.listSubcategories(),
-        ]);
-
-        setBrands(brandsRes.allBrands);
-        setCategories(categoriesRes.catgoryProducts);
-
-        // Map subcategories to include parent_category ID based on category_name
-        const mappedSubcategories = subcategoriesRes.data.map(sub => {
-          const parentCat = categoriesRes.catgoryProducts.find(c => c.category_name === sub.category_name);
-          return {
-            ...sub,
-            parent_category: parentCat?.category_id
-          };
-        });
-
-        setSubcategories(mappedSubcategories);
-
-        // TODO: Fetch actual product data from backend when productId is available
-        if (productId) {
-          setFormData({
-            name: "Wireless Headphones",
-            description: "Premium wireless headphones",
-            brand: brandsRes.allBrands[0]?._id || "",
-            category: categoriesRes.catgoryProducts[0]?.category_id || "",
-            subCategory: mappedSubcategories[0]?.sub_category_id || "",
-            tags: ["audio", "wireless"],
-            quantity: 45,
-            dimensionType: "PIECE",
-            price: 79.99,
-            discount: 10,
-            newBadge: true,
-            salesBadge: false,
-            featured: true,
-            avatar: "",
-            avatarFile: null,
-            coverImages: [],
-            coverImageFiles: [],
-          });
-        }
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: "Failed to load form data",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [productId, toast]);
-
   const actualPrice = formData.price - (formData.price * formData.discount / 100);
-  const availableSubCategories = formData.category
-    ? subcategories.filter(sub => sub.parent_category === formData.category)
-    : [];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    toast({
-      title: "Product updated",
-      description: "The product has been updated successfully.",
-    });
+    if (!productId) {
+      toast({
+        title: "Error",
+        description: "Product ID is missing",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    navigate(ROUTES.DASHBOARD.PRODUCTS);
+    try {
+      setIsSubmitting(true);
+
+      const apiFormData = new FormData();
+      apiFormData.append('product_name', formData.name);
+      apiFormData.append('product_description', formData.description);
+      apiFormData.append('product_price', formData.price.toString());
+      apiFormData.append('discount_percentage', formData.discount.toString());
+      apiFormData.append('sales', formData.salesBadge.toString());
+      apiFormData.append('featured', formData.featured.toString());
+      apiFormData.append('manufacturer', formData.manufacturer);
+      apiFormData.append('isNew', formData.newBadge.toString());
+
+      // Append avatar if a new file was selected
+      if (formData.avatarFile) {
+        apiFormData.append('avatar', formData.avatarFile);
+      }
+
+      // Append tags individually
+      formData.tags.forEach((tag) => {
+        apiFormData.append('tags', tag);
+      });
+
+      // Append new cover images if any were selected
+      formData.coverImageFiles.forEach((file) => {
+        apiFormData.append('cover_images', file);
+      });
+
+      await productService.updateProduct(productId, apiFormData);
+
+      toast({
+        title: "Success",
+        description: "Product updated successfully",
+      });
+
+      navigate(ROUTES.DASHBOARD.PRODUCTS);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update product",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  if (isLoading) {
-    return <Loader fullScreen size="lg" message="Loading product data..." />;
+  // If no current product in store, show error
+  if (!currentProduct) {
+    return (
+      <div className="space-y-6">
+        <FormPageHeader
+          title="Edit Product"
+          description="Update product information"
+          backPath={ROUTES.DASHBOARD.PRODUCTS}
+        />
+        <Card>
+          <CardContent className="py-8">
+            <p className="text-center text-muted-foreground">
+              No product data found. Please select a product from the products list.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -191,6 +158,7 @@ export default function ProductEdit() {
               <div className="space-y-2">
                 <Label htmlFor="name">Product Name *</Label>
                 <Input
+                  placeholder="Enter product name"
                   id="name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -198,71 +166,23 @@ export default function ProductEdit() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="brand">Brand *</Label>
-                <Select value={formData.brand} onValueChange={(value) => setFormData({ ...formData, brand: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select brand" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {brands.map((brand) => (
-                      <SelectItem key={brand._id} value={brand._id}>
-                        {brand.brand_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="manufacturer">Manufacturer</Label>
+                <Input
+                  placeholder="Enter manufacturer name"
+                  id="manufacturer"
+                  value={formData.manufacturer}
+                  onChange={(e) => setFormData({ ...formData, manufacturer: e.target.value })}
+                />
               </div>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
+              <RichTextEditor
+                placeholder="Enter description"
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={4}
+                onChange={(value) => setFormData({ ...formData, description: value })}
               />
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="category">Category *</Label>
-                <Select
-                  value={formData.category}
-                  onValueChange={(value) => setFormData({ ...formData, category: value, subCategory: "" })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat.category_id} value={cat.category_id}>
-                        {cat.category_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="subCategory">Sub Category *</Label>
-                <Select
-                  value={formData.subCategory}
-                  onValueChange={(value) => setFormData({ ...formData, subCategory: value })}
-                  disabled={!formData.category}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={formData.category ? "Select sub category" : "Select category first"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableSubCategories.map((subCat) => (
-                      <SelectItem key={subCat.sub_category_id} value={subCat.sub_category_id}>
-                        {subCat.sub_category_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
 
             <TagInput
@@ -271,43 +191,6 @@ export default function ProductEdit() {
               onChange={(tags) => setFormData({ ...formData, tags })}
               placeholder="Type and press Enter"
             />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Quantity & Dimension</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="quantity">Quantity *</Label>
-                <Input
-                  id="quantity"
-                  type="number"
-                  value={formData.quantity}
-                  onChange={(e) => setFormData({ ...formData, quantity: parseFloat(e.target.value) || 0 })}
-                  required
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="dimensionType">Dimension Type *</Label>
-                <Select value={formData.dimensionType} onValueChange={(value) => setFormData({ ...formData, dimensionType: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select dimension" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {dimensionTypes.map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {type}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
           </CardContent>
         </Card>
 
@@ -422,8 +305,10 @@ export default function ProductEdit() {
         <FormActions
           cancelPath={ROUTES.DASHBOARD.PRODUCTS}
           submitLabel="Update Product"
+          isSubmitting={isSubmitting}
         />
       </form>
+      {isSubmitting && <Loader fullScreen message="Updating product..." />}
     </div>
   );
 }

@@ -16,7 +16,7 @@ type UserFormData = {
   email: string;
   password: string;
   phone_number: string;
-  role: "user" | "admin" | "super admin";
+  role: "admin" | "superadmin";
 };
 
 export default function UserEdit() {
@@ -31,7 +31,7 @@ export default function UserEdit() {
     email: "",
     password: "",
     phone_number: "",
-    role: "user",
+    role: "admin",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -160,7 +160,7 @@ export default function UserEdit() {
               <Label htmlFor="role">Role *</Label>
               <Select
                 value={formData.role}
-                onValueChange={(value: "user" | "admin" | "super admin") =>
+                onValueChange={(value: "admin" | "superadmin") =>
                   setFormData({ ...formData, role: value })
                 }
               >
@@ -168,9 +168,8 @@ export default function UserEdit() {
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="user">User</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="super admin">Super Admin</SelectItem>
+                  <SelectItem value="superadmin">Super Admin</SelectItem>
                 </SelectContent>
               </Select>
             </div>

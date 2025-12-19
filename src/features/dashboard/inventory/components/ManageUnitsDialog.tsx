@@ -1,33 +1,77 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Tag, Plus, Trash2, X } from "lucide-react";
+import { Tag, Plus, Loader2 } from "lucide-react";
+import { dimensionService } from "../services";
+import { toast } from "sonner";
 
 interface ManageUnitsDialogProps {
-    units: string[];
     onUnitsChange?: (units: string[]) => void;
 }
 
-export function ManageUnitsDialog({ units: initialUnits, onUnitsChange }: ManageUnitsDialogProps) {
+export function ManageUnitsDialog({ onUnitsChange }: ManageUnitsDialogProps) {
     const [open, setOpen] = useState(false);
-    const [units, setUnits] = useState<string[]>(initialUnits);
+    const [units, setUnits] = useState<string[]>([]);
     const [newUnit, setNewUnit] = useState("");
+    const [isAddingUnit, setIsAddingUnit] = useState(false);
+    const [isLoadingUnits, setIsLoadingUnits] = useState(false);
 
-    const handleAddUnit = () => {
-        if (newUnit.trim() && !units.includes(newUnit.trim().toLowerCase())) {
-            const updatedUnits = [...units, newUnit.trim().toLowerCase()];
-            setUnits(updatedUnits);
-            onUnitsChange?.(updatedUnits);
-            setNewUnit("");
+    // Fetch units from database
+    useEffect(() => {
+        if (open) {
+            fetchMetrics();
+        }
+    }, [open]);
+
+    const fetchMetrics = async () => {
+        setIsLoadingUnits(true);
+        try {
+            const response = await dimensionService.getMetrics();
+            if (response.success) {
+                const dimensionNames = response.metrics.map(metric => metric.dimension_name.toLowerCase());
+                setUnits(dimensionNames);
+                onUnitsChange?.(dimensionNames);
+            }
+        } catch (error: any) {
+            console.error("Error fetching metrics:", error);
+            toast.error(error?.response?.data?.message || "Failed to load dimensions");
+        } finally {
+            setIsLoadingUnits(false);
         }
     };
 
-    const handleDeleteUnit = (unitToDelete: string) => {
-        const updatedUnits = units.filter(unit => unit !== unitToDelete);
-        setUnits(updatedUnits);
-        onUnitsChange?.(updatedUnits);
+    const handleAddUnit = async () => {
+        if (!newUnit.trim()) {
+            toast.error("Please enter a unit name");
+            return;
+        }
+
+        if (units.includes(newUnit.trim().toLowerCase())) {
+            toast.error("This unit already exists");
+            return;
+        }
+
+        setIsAddingUnit(true);
+        try {
+            const response = await dimensionService.addMetrics({
+                dimension_name: newUnit.trim(),
+            });
+
+            if (response.success) {
+                setNewUnit("");
+                toast.success(response.message || "Dimension added successfully");
+                // Refetch all metrics to ensure we have the latest data
+                await fetchMetrics();
+            }
+        } catch (error: any) {
+            console.error("Error adding metrics:", error);
+            toast.error(error?.response?.data?.message || "Failed to add dimension");
+        } finally {
+            setIsAddingUnit(false);
+        }
     };
+
 
     const handleKeyPress = (e: React.KeyboardEvent) => {
         if (e.key === "Enter") {
@@ -65,13 +109,19 @@ export function ManageUnitsDialog({ units: initialUnits, onUnitsChange }: Manage
                             onChange={(e) => setNewUnit(e.target.value)}
                             onKeyPress={handleKeyPress}
                             className="flex-1"
+                            disabled={isAddingUnit}
                         />
                         <Button
                             onClick={handleAddUnit}
                             size="icon"
                             className="shrink-0"
+                            disabled={isAddingUnit}
                         >
-                            <Plus className="h-4 w-4" />
+                            {isAddingUnit ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <Plus className="h-4 w-4" />
+                            )}
                         </Button>
                     </div>
 
@@ -81,23 +131,20 @@ export function ManageUnitsDialog({ units: initialUnits, onUnitsChange }: Manage
                             Available Dimensions
                         </h4>
                         <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
-                            {units.map((unit, index) => (
-                                <div
-                                    key={index}
-                                    className="flex items-center justify-between p-3 rounded-lg border bg-background hover:bg-accent/50 transition-colors group"
-                                >
-                                    <span className="text-sm font-medium">{unit}</span>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                                        onClick={() => handleDeleteUnit(unit)}
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
+                            {isLoadingUnits ? (
+                                <div className="flex items-center justify-center py-8">
+                                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                                 </div>
-                            ))}
-                            {units.length === 0 && (
+                            ) : units.length > 0 ? (
+                                units.map((unit, index) => (
+                                    <div
+                                        key={index}
+                                        className="flex items-center justify-between p-3 rounded-lg border bg-background hover:bg-accent/50 transition-colors"
+                                    >
+                                        <span className="text-sm font-medium">{unit}</span>
+                                    </div>
+                                ))
+                            ) : (
                                 <div className="text-center py-8 text-sm text-muted-foreground">
                                     No units added yet. Add your first unit above.
                                 </div>

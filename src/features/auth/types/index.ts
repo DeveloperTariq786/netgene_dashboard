@@ -11,10 +11,21 @@ export interface SignupCredentials {
   name?: string;
 }
 
+export interface Permission {
+  _id: string;
+  can_add_superadmin: boolean;
+  can_add_admin: boolean;
+  can_add_records: boolean;
+  can_update_records: boolean;
+  can_read_records: boolean;
+  can_delete_records: boolean;
+}
+
 export interface AuthUser {
   email: string;
   name: string;
   role: UserRole;
+  permission: Permission[];
 }
 
 export interface AuthSession {

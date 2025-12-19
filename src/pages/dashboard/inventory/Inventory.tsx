@@ -8,22 +8,20 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Layers, X } from "lucide-react";
+import { Search, Layers } from "lucide-react";
+import {
+    Pagination,
+    PaginationContent,
+    PaginationEllipsis,
+    PaginationItem,
+    PaginationLink,
+    PaginationNext,
+    PaginationPrevious,
+} from "@/components/ui/pagination";
 import { Loader } from "@/components/loader/Loader";
-import { ManageUnitsDialog } from "@/features/dashboard/inventory";
-
-interface InventoryItem {
-    id: string;
-    name: string;
-    category: string;
-    image: string;
-    sku: string;
-    price: number;
-    priceUnit: string;
-    stockLevel: number;
-    stockUnit: string;
-    stockStatus: "in_stock" | "low_stock" | "out_of_stock";
-}
+import { ManageUnitsDialog, inventoryService } from "@/features/dashboard/inventory";
+import { InventoryItem } from "@/features/dashboard/inventory/types";
+import { toast } from "sonner";
 
 export default function Inventory() {
     const navigate = useNavigate();
@@ -31,88 +29,50 @@ export default function Inventory() {
     const [isLoading, setIsLoading] = useState(true);
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
     const [stockFilter, setStockFilter] = useState<string>("all");
-    const [availableUnits, setAvailableUnits] = useState<string[]>(["pcs", "kg", "liter", "dozen"]);
+    const [availableUnits, setAvailableUnits] = useState<string[]>([]);
+    const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
 
     useEffect(() => {
-        // Simulate data fetching
-        const timer = setTimeout(() => {
-            setIsLoading(false);
-        }, 1000);
-        return () => clearTimeout(timer);
-    }, []);
+        fetchInventory();
+    }, [currentPage]);
 
-    const [inventoryItems] = useState<InventoryItem[]>([
-        {
-            id: "1",
-            name: "Minimalist Leather Watch",
-            category: "Accessories",
-            image: "https://placehold.co/48x48/6366f1/ffffff?text=Watch",
-            sku: "ACC-001",
-            price: 129.00,
-            priceUnit: "pcs",
-            stockLevel: 45,
-            stockUnit: "pcs",
-            stockStatus: "in_stock"
-        },
-        {
-            id: "2",
-            name: "Premium Cotton Socks",
-            category: "Apparel",
-            image: "https://placehold.co/48x48/8b5cf6/ffffff?text=Socks",
-            sku: "APP-055",
-            price: 24.50,
-            priceUnit: "dozen",
-            stockLevel: 120,
-            stockUnit: "dozen",
-            stockStatus: "in_stock"
-        },
-        {
-            id: "3",
-            name: "Organic Arabica Coffee Beans",
-            category: "Groceries",
-            image: "https://placehold.co/48x48/f59e0b/ffffff?text=Coffee",
-            sku: "GRO-102",
-            price: 18.00,
-            priceUnit: "kg",
-            stockLevel: 12,
-            stockUnit: "kg",
-            stockStatus: "in_stock"
-        },
-        {
-            id: "4",
-            name: "Cold Press Orange Juice",
-            category: "Beverages",
-            image: "https://placehold.co/48x48/ef4444/ffffff?text=Juice",
-            sku: "BEV-774",
-            price: 6.99,
-            priceUnit: "liter",
-            stockLevel: 0,
-            stockUnit: "liter",
-            stockStatus: "out_of_stock"
-        },
-        {
-            id: "5",
-            name: "Canvas Weekender Bag",
-            category: "Travel",
-            image: "https://placehold.co/48x48/10b981/ffffff?text=Bag",
-            sku: "TRV-009",
-            price: 85.00,
-            priceUnit: "pcs",
-            stockLevel: 8,
-            stockUnit: "pcs",
-            stockStatus: "low_stock"
+    const fetchInventory = async () => {
+        try {
+            setIsLoading(true);
+            const response = await inventoryService.listInventory({
+                page: currentPage,
+                limit: 5,
+            });
+            if (response.success) {
+                setInventoryItems(response.data);
+                setTotalPages(response.totalPages);
+            }
+        } catch (error: any) {
+            console.error("Error fetching inventory:", error);
+            toast.error(error?.response?.data?.message || "Failed to load inventory");
+        } finally {
+            setIsLoading(false);
         }
-    ]);
+    };
+
+    const getStockStatusKey = (status: string): "in_stock" | "low_stock" | "out_of_stock" => {
+        const normalizedStatus = status.toLowerCase().replace(/\s+/g, '_');
+        if (normalizedStatus.includes('out')) return 'out_of_stock';
+        if (normalizedStatus.includes('low')) return 'low_stock';
+        return 'in_stock';
+    };
 
     const filteredItems = inventoryItems.filter(item => {
-        const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.category.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesSearch = item.product_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.product_code.toLowerCase().includes(searchQuery.toLowerCase());
 
+        const stockStatusKey = getStockStatusKey(item.stock_status);
         const matchesStockFilter = stockFilter === "all" ||
-            (stockFilter === "in_stock" && item.stockStatus === "in_stock") ||
-            (stockFilter === "low_stock" && item.stockStatus === "low_stock") ||
-            (stockFilter === "out_of_stock" && item.stockStatus === "out_of_stock");
+            (stockFilter === "in_stock" && stockStatusKey === "in_stock") ||
+            (stockFilter === "low_stock" && stockStatusKey === "low_stock") ||
+            (stockFilter === "out_of_stock" && stockStatusKey === "out_of_stock");
 
         return matchesSearch && matchesStockFilter;
     });
@@ -129,7 +89,7 @@ export default function Inventory() {
         if (selectedItems.length === filteredItems.length) {
             setSelectedItems([]);
         } else {
-            setSelectedItems(filteredItems.map(item => item.id));
+            setSelectedItems(filteredItems.map(item => item._id));
         }
     };
 
@@ -143,7 +103,6 @@ export default function Inventory() {
                     </p>
                 </div>
                 <ManageUnitsDialog
-                    units={availableUnits}
                     onUnitsChange={setAvailableUnits}
                 />
             </div>
@@ -210,69 +169,109 @@ export default function Inventory() {
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    filteredItems.map((item) => (
-                                        <TableRow key={item.id}>
-                                            <TableCell>
-                                                <Checkbox
-                                                    checked={selectedItems.includes(item.id)}
-                                                    onCheckedChange={() => toggleItemSelection(item.id)}
-                                                />
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center gap-3">
-                                                    <img
-                                                        src={item.image}
-                                                        alt={item.name}
-                                                        className="w-12 h-12 rounded-md object-cover"
+                                    filteredItems.map((item) => {
+                                        const stockStatusKey = getStockStatusKey(item.stock_status);
+                                        return (
+                                            <TableRow key={item._id}>
+                                                <TableCell>
+                                                    <Checkbox
+                                                        checked={selectedItems.includes(item._id)}
+                                                        onCheckedChange={() => toggleItemSelection(item._id)}
                                                     />
-                                                    <div>
-                                                        <div className="font-medium">{item.name}</div>
-                                                        <div className="text-sm text-muted-foreground">{item.category}</div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-3">
+                                                        <img
+                                                            src={item.product_url}
+                                                            alt={item.product_name}
+                                                            className="w-12 h-12 rounded-md object-cover"
+                                                        />
+                                                        <div>
+                                                            <div className="font-medium">{item.product_name}</div>
+                                                            <div className="text-sm text-muted-foreground">{item.dimension_name}</div>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-muted-foreground">{item.sku}</TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-medium">
-                                                        {item.stockLevel} {item.stockUnit}
-                                                    </span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                {item.stockStatus === "in_stock" && (
-                                                    <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-none shadow-none font-medium">
-                                                        In Stock
-                                                    </Badge>
-                                                )}
-                                                {item.stockStatus === "low_stock" && (
-                                                    <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100 border-none shadow-none font-medium">
-                                                        Low Stock
-                                                    </Badge>
-                                                )}
-                                                {item.stockStatus === "out_of_stock" && (
-                                                    <Badge className="bg-red-100 text-red-700 hover:bg-red-100 border-none shadow-none font-medium">
-                                                        Out of Stock
-                                                    </Badge>
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => navigate(ROUTES.DASHBOARD.INVENTORY_EDIT(item.id))}
-                                                >
-                                                    Update
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
+                                                </TableCell>
+                                                <TableCell className="text-muted-foreground">{item.product_code}</TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-medium">
+                                                            {item.product_stock} {item.dimension_name}
+                                                        </span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    {stockStatusKey === "in_stock" && (
+                                                        <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-none shadow-none font-medium">
+                                                            In Stock
+                                                        </Badge>
+                                                    )}
+                                                    {stockStatusKey === "low_stock" && (
+                                                        <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100 border-none shadow-none font-medium">
+                                                            Low Stock
+                                                        </Badge>
+                                                    )}
+                                                    {stockStatusKey === "out_of_stock" && (
+                                                        <Badge className="bg-red-100 text-red-700 hover:bg-red-100 border-none shadow-none font-medium">
+                                                            Out of Stock
+                                                        </Badge>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => navigate(ROUTES.DASHBOARD.INVENTORY_EDIT(item._id))}
+                                                    >
+                                                        Update
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })
                                 )}
                             </TableBody>
                         </Table>
                     </div>
                 </CardContent>
             </Card>
+
+            {totalPages > 1 && (
+                <Pagination className="mt-4">
+                    <PaginationContent>
+                        <PaginationItem>
+                            <PaginationPrevious
+                                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                                className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                        </PaginationItem>
+
+                        {[...Array(totalPages)].map((_, i) => {
+                            const page = i + 1;
+                            // Basic logic to show limited pages if many, but for now showing all as per typical backend response size of 4
+                            return (
+                                <PaginationItem key={page}>
+                                    <PaginationLink
+                                        isActive={currentPage === page}
+                                        onClick={() => setCurrentPage(page)}
+                                        className="cursor-pointer"
+                                    >
+                                        {page}
+                                    </PaginationLink>
+                                </PaginationItem>
+                            );
+                        })}
+
+                        <PaginationItem>
+                            <PaginationNext
+                                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                                className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                        </PaginationItem>
+                    </PaginationContent>
+                </Pagination>
+            )}
+
             {isLoading && <Loader fullScreen message="Loading inventory..." />}
 
             {/* Bulk Action Bar */}

@@ -49,3 +49,16 @@ export const PRODUCT_ENDPOINTS = {
   UPDATE: '/api/v1/admin/update-product',
   DELETE: '/api/v1/admin/delete-product',
 } as const;
+
+// Metrics (Dimensions/Units) API endpoints
+export const METRICS_ENDPOINTS = {
+  ADD: '/api/v1/admin/add-metrics',
+  LIST: '/api/v1/admin/metrics',
+} as const;
+
+// Inventory API endpoints
+export const INVENTORY_ENDPOINTS = {
+  LIST: '/api/v1/admin/inventory',
+  UPDATE: '/api/v1/admin/update-inventory',
+  BULK_UPDATE: '/api/v1/admin/bulk-inventory-update',
+} as const;

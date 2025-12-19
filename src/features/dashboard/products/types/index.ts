@@ -4,11 +4,15 @@ export interface ProductFormData {
   name: string;
   description: string;
   price: number;
-  stock: number;
+  manufacturer: string;
   categoryId: string;
   subCategoryId?: string;
   brandId?: string;
+  dimensionId?: string;
   images: File[];
   tags: string[];
+  isNew: boolean;
+  sales: boolean;
+  featured: boolean;
   status: "active" | "inactive" | "draft";
 }

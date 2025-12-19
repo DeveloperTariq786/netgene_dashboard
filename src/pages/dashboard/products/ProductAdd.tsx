@@ -21,6 +21,12 @@ import { brandService } from "@/features/dashboard/brands";
 import { categoryService } from "@/features/dashboard/categories";
 import { subcategoryService } from "@/features/dashboard/subcategories";
 import { productService } from "@/features/dashboard/products";
+import { dimensionService } from "@/features/dashboard/inventory";
+
+type Dimension = {
+  _id: string;
+  dimension_name: string;
+};
 
 type ProductFormData = {
   name: string;
@@ -30,8 +36,7 @@ type ProductFormData = {
   category: string;
   subCategory: string;
   tags: string[];
-  quantity: number;
-  dimensionType: string;
+  dimensionId: string;
   price: number;
   discount: number;
   newBadge: boolean;
@@ -63,8 +68,6 @@ type Subcategory = {
   parent_category?: string; // Derived field for filtering
 };
 
-const dimensionTypes = ["KG", "LITRE", "DOZEN", "PIECE"];
-
 export default function ProductAdd() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -72,6 +75,7 @@ export default function ProductAdd() {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
+  const [dimensions, setDimensions] = useState<Dimension[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -83,8 +87,7 @@ export default function ProductAdd() {
     category: "",
     subCategory: "",
     tags: [],
-    quantity: 0,
-    dimensionType: "PIECE",
+    dimensionId: "",
     price: 0,
     discount: 0,
     newBadge: false,
@@ -100,14 +103,24 @@ export default function ProductAdd() {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        const [brandsRes, categoriesRes, subcategoriesRes] = await Promise.all([
+        const [brandsRes, categoriesRes, subcategoriesRes, metricsRes] = await Promise.all([
           brandService.listBrands(),
           categoryService.listCategories(),
           subcategoryService.listSubcategories(),
+          dimensionService.getMetrics(),
         ]);
 
         setBrands(brandsRes.data);
         setCategories(categoriesRes.catgoryProducts);
+
+        // Set dimensions from API
+        if (metricsRes.success) {
+          const dimensionsList = metricsRes.metrics.map(m => ({
+            _id: m._id,
+            dimension_name: m.dimension_name,
+          }));
+          setDimensions(dimensionsList);
+        }
 
         // Map subcategories to include parent_category ID based on category_name
         const mappedSubcategories = subcategoriesRes.data.map(sub => {
@@ -156,15 +169,25 @@ export default function ProductAdd() {
       const apiFormData = new FormData();
       apiFormData.append('product_name', formData.name);
       apiFormData.append('product_description', formData.description);
-      apiFormData.append('product_quantity', formData.quantity.toString());
       apiFormData.append('product_price', formData.price.toString());
       apiFormData.append('discount_percentage', formData.discount.toString());
-      apiFormData.append('dimensions', formData.dimensionType);
+
+      // Get dimension name from ID for the dimensions field
+      const selectedDimension = dimensions.find(d => d._id === formData.dimensionId);
+      apiFormData.append('dimensions', selectedDimension?.dimension_name || '');
+
       apiFormData.append('sales', formData.salesBadge.toString());
       apiFormData.append('featured', formData.featured.toString());
       apiFormData.append('manufacturer', formData.manufacturer);
+      apiFormData.append('isNew', formData.newBadge.toString());
       apiFormData.append('avatar', formData.avatarFile);
 
+      // Append tags individually
+      formData.tags.forEach((tag) => {
+        apiFormData.append('tags', tag);
+      });
+
+      // Append cover images
       formData.coverImageFiles.forEach((file) => {
         apiFormData.append('cover_images', file);
       });
@@ -173,7 +196,8 @@ export default function ProductAdd() {
         apiFormData,
         formData.brand,
         formData.category,
-        formData.subCategory
+        formData.subCategory,
+        formData.dimensionId
       );
 
       toast({
@@ -315,37 +339,23 @@ export default function ProductAdd() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Quantity & Dimension</CardTitle>
+            <CardTitle>Dimensions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="quantity">Quantity *</Label>
-                <Input
-                  id="quantity"
-                  type="number"
-                  value={formData.quantity}
-                  onChange={(e) => setFormData({ ...formData, quantity: parseFloat(e.target.value) || 0 })}
-                  required
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="dimensionType">Dimension Type *</Label>
-                <Select value={formData.dimensionType} onValueChange={(value) => setFormData({ ...formData, dimensionType: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select dimension" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {dimensionTypes.map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {type}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="dimensionId">Dimension Type *</Label>
+              <Select value={formData.dimensionId} onValueChange={(value) => setFormData({ ...formData, dimensionId: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select dimension" />
+                </SelectTrigger>
+                <SelectContent>
+                  {dimensions.map((dim) => (
+                    <SelectItem key={dim._id} value={dim._id}>
+                      {dim.dimension_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </CardContent>
         </Card>

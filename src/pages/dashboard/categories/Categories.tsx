@@ -14,6 +14,9 @@ import { categoryService, useCategoryStore } from "@/features/dashboard/categori
 import { Loader } from "@/components/loader/Loader";
 import { DeleteConfirmDialog } from "@/components/shared";
 
+import { useAuth } from "@/features/auth/hooks";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
 interface Category {
   category_id: string;
   category_name: string;
@@ -32,7 +35,13 @@ export default function Categories() {
   const [isLoading, setIsLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
+
   const [isDeleting, setIsDeleting] = useState(false);
+  const { user } = useAuth();
+
+  const canAdd = user?.permission?.[0]?.can_add_records ?? false;
+  const canDelete = user?.permission?.[0]?.can_delete_records ?? false;
+  const canUpdate = user?.permission?.[0]?.can_update_records ?? false;
 
   useEffect(() => {
     fetchCategories();
@@ -93,155 +102,196 @@ export default function Categories() {
   };
 
   return (
-    <div className="space-y-6 max-w-full overflow-hidden">
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Categories</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage your product categories
-          </p>
+    <TooltipProvider>
+      <div className="space-y-6 max-w-full overflow-hidden">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Categories</h1>
+            <p className="text-muted-foreground mt-1">
+              Manage your product categories
+            </p>
+          </div>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span tabIndex={!canAdd ? 0 : -1} className="inline-block">
+                <Button
+                  className="gap-2"
+                  onClick={() => navigate(ROUTES.DASHBOARD.CATEGORIES_ADD)}
+                  disabled={!canAdd}
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Category
+                </Button>
+              </span>
+            </TooltipTrigger>
+            {!canAdd && (
+              <TooltipContent>
+                <p>You are {user?.role}, you cannot add records</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
         </div>
 
-        <Button className="gap-2" onClick={() => navigate(ROUTES.DASHBOARD.CATEGORIES_ADD)}>
-          <Plus className="h-4 w-4" />
-          Add Category
-        </Button>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div>
-              <CardTitle>All Categories</CardTitle>
-              <CardDescription className="mt-1.5">
-                A list of all product categories in your store
-              </CardDescription>
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div>
+                <CardTitle>All Categories</CardTitle>
+                <CardDescription className="mt-1.5">
+                  A list of all product categories in your store
+                </CardDescription>
+              </div>
+              <div className="relative lg:w-80">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search categories..."
+                  className="pl-10"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
             </div>
-            <div className="relative lg:w-80">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search categories..."
-                className="pl-10"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="overflow-x-auto p-0">
-          <div className="min-w-full inline-block align-middle">
-            <Table className="w-full">
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[250px]">Category</TableHead>
-                  <TableHead className="text-center">Sub Categories</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
+          </CardHeader>
+          <CardContent className="overflow-x-auto p-0">
+            <div className="min-w-full inline-block align-middle">
+              <Table className="w-full">
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
-                      Loading categories...
-                    </TableCell>
+                    <TableHead className="w-[250px]">Category</TableHead>
+                    <TableHead className="text-center">Sub Categories</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ) : paginatedCategories.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
-                      No categories found
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  paginatedCategories.map((category) => (
-                    <TableRow key={category.category_id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage src={category.category_logo} alt={category.category_name} />
-                            <AvatarFallback>
-                              <FolderOpen className="h-5 w-5" />
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="font-medium">{category.category_name}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className="text-sm">{category.total_subcategories}</span>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setCurrentCategory(category);
-                              navigate(`${ROUTES.DASHBOARD.CATEGORIES_EDIT}?id=${category.category_id}`);
-                            }}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setCategoryToDelete(category.category_id);
-                              setDeleteDialogOpen(true);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                        Loading categories...
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-        {totalPages > 1 && (
-          <div className="p-4 border-t">
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                  />
-                </PaginationItem>
-                {[...Array(totalPages)].map((_, i) => (
-                  <PaginationItem key={i + 1}>
-                    <PaginationLink
-                      onClick={() => setCurrentPage(i + 1)}
-                      isActive={currentPage === i + 1}
-                      className="cursor-pointer"
-                    >
-                      {i + 1}
-                    </PaginationLink>
+                  ) : paginatedCategories.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                        No categories found
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    paginatedCategories.map((category) => (
+                      <TableRow key={category.category_id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-10 w-10">
+                              <AvatarImage src={category.category_logo} alt={category.category_name} />
+                              <AvatarFallback>
+                                <FolderOpen className="h-5 w-5" />
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium">{category.category_name}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <span className="text-sm">{category.total_subcategories}</span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span tabIndex={!canUpdate ? 0 : -1} className="inline-block">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => {
+                                      setCurrentCategory(category);
+                                      navigate(`${ROUTES.DASHBOARD.CATEGORIES_EDIT}?id=${category.category_id}`);
+                                    }}
+                                    disabled={!canUpdate}
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                </span>
+                              </TooltipTrigger>
+                              {!canUpdate && (
+                                <TooltipContent>
+                                  <p>You are {user?.role}, you cannot update records</p>
+                                </TooltipContent>
+                              )}
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span tabIndex={!canDelete ? 0 : -1} className="inline-block">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => {
+                                      setCategoryToDelete(category.category_id);
+                                      setDeleteDialogOpen(true);
+                                    }}
+                                    disabled={!canDelete}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </span>
+                              </TooltipTrigger>
+                              {!canDelete && (
+                                <TooltipContent>
+                                  <p>You are {user?.role}, you cannot delete records</p>
+                                </TooltipContent>
+                              )}
+                            </Tooltip>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+          {totalPages > 1 && (
+            <div className="p-4 border-t">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
                   </PaginationItem>
-                ))}
-                <PaginationItem>
-                  <PaginationNext
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          </div>
-        )}
-      </Card>
-      {isLoading && <Loader fullScreen message="Loading categories..." />}
+                  {[...Array(totalPages)].map((_, i) => (
+                    <PaginationItem key={i + 1}>
+                      <PaginationLink
+                        onClick={() => setCurrentPage(i + 1)}
+                        isActive={currentPage === i + 1}
+                        className="cursor-pointer"
+                      >
+                        {i + 1}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
+        </Card>
+        {isLoading && <Loader fullScreen message="Loading categories..." />}
 
-      <DeleteConfirmDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        onConfirm={handleDeleteCategory}
-        isLoading={isDeleting}
-        title="Delete Category"
-        description="Are you sure you want to delete this category? This cannot be undone."
-        confirmText="Delete Category"
-      />
-    </div>
+        <DeleteConfirmDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          onConfirm={handleDeleteCategory}
+          isLoading={isDeleting}
+          title="Delete Category"
+          description="Are you sure you want to delete this category? This cannot be undone."
+          confirmText="Delete Category"
+        />
+      </div>
+    </TooltipProvider>
   );
 }

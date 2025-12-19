@@ -9,7 +9,7 @@ import { useToast } from "@/core/hooks/use-toast";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { ROUTES } from "@/core/config/routes";
-import { productService, type Product } from "@/features/dashboard/products";
+import { productService, useProductStore, type Product } from "@/features/dashboard/products";
 import { brandService } from "@/features/dashboard/brands";
 import { categoryService } from "@/features/dashboard/categories";
 import { subcategoryService } from "@/features/dashboard/subcategories";
@@ -26,6 +26,7 @@ export default function Products() {
   const [isLoading, setIsLoading] = useState(true);
   const itemsPerPage = 10;
   const { toast } = useToast();
+  const { setCurrentProduct } = useProductStore();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -125,8 +126,6 @@ export default function Products() {
                   <TableHead>Category</TableHead>
                   <TableHead>Sub Category</TableHead>
                   <TableHead>Manufacturer</TableHead>
-                  <TableHead>Quantity</TableHead>
-                  <TableHead>Dimension</TableHead>
                   <TableHead>Price</TableHead>
                   <TableHead>Discount</TableHead>
                   <TableHead>Final Price</TableHead>
@@ -137,13 +136,13 @@ export default function Products() {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={12} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
                       Loading products...
                     </TableCell>
                   </TableRow>
                 ) : paginatedProducts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={12} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
                       No products found
                     </TableCell>
                   </TableRow>
@@ -165,20 +164,23 @@ export default function Products() {
                       <TableCell>{categories.get(product.product_category) || "-"}</TableCell>
                       <TableCell>{subcategories.get(product.product_sub_category) || "-"}</TableCell>
                       <TableCell>{product.manufacturer || "-"}</TableCell>
-                      <TableCell>{product.product_quantity}</TableCell>
-                      <TableCell>{product.dimensions}</TableCell>
                       <TableCell>${product.product_price.toFixed(2)}</TableCell>
-                      <TableCell>{product.discount_precentage}%</TableCell>
-                      <TableCell className="font-semibold">${product.final_price.toFixed(2)}</TableCell>
+                      <TableCell className="text-red-600 font-medium">{product.discount_precentage}%</TableCell>
+                      <TableCell className="font-semibold text-emerald-600">${product.final_price.toFixed(2)}</TableCell>
                       <TableCell>
                         <div className="flex gap-1 flex-wrap">
-                          {product.sales && (
+                          {product.isNew === "true" && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-600">
+                              New
+                            </span>
+                          )}
+                          {product.sales === "true" && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-destructive/10 text-destructive">
                               Sale
                             </span>
                           )}
-                          {product.featured && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-accent/10 text-accent-foreground">
+                          {product.featured === "true" && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500/10 text-purple-600">
                               Featured
                             </span>
                           )}
@@ -189,7 +191,10 @@ export default function Products() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => navigate(ROUTES.DASHBOARD.PRODUCTS_EDIT(product._id))}
+                            onClick={() => {
+                              setCurrentProduct(product);
+                              navigate(ROUTES.DASHBOARD.PRODUCTS_EDIT(product._id));
+                            }}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>

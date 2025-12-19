@@ -4,7 +4,6 @@ import { PRODUCT_ENDPOINTS } from '@/core/api/endpoint';
 export interface CreateProductData {
   product_name: string;
   product_description: string;
-  product_quantity: number;
   product_price: number;
   discount_percentage: number;
   avatar: File;
@@ -13,13 +12,19 @@ export interface CreateProductData {
   sales: boolean;
   featured: boolean;
   manufacturer: string;
+  tags: string[];
+  isNew: boolean;
+}
+
+export interface ProductTag {
+  tag_name: string;
+  _id: string;
 }
 
 export interface Product {
   _id: string;
   product_name: string;
   product_description: string;
-  product_quantity: number;
   product_price: number;
   discount_precentage: number;
   final_price: number;
@@ -33,8 +38,10 @@ export interface Product {
   }>;
   dimensions: string;
   manufacturer: string;
-  sales: boolean;
-  featured: boolean;
+  sales: string;
+  featured: string;
+  isNew: string;
+  tags: ProductTag[];
   created_by: string;
   product_reviews: any[];
   product_likes: any[];
@@ -60,10 +67,27 @@ export const productService = {
     data: FormData,
     brandId: string,
     categoryId: string,
-    subCategoryId: string
+    subCategoryId: string,
+    dimensionId: string
   ): Promise<ProductResponse> => {
     const response = await apiClient.post<ProductResponse>(
-      `${PRODUCT_ENDPOINTS.CREATE}?brand_id=${brandId}&category_id=${categoryId}&sub_category_id=${subCategoryId}`,
+      `${PRODUCT_ENDPOINTS.CREATE}?brand_id=${brandId}&category_id=${categoryId}&sub_category_id=${subCategoryId}&dimension_id=${dimensionId}`,
+      data,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    return response.data;
+  },
+
+  updateProduct: async (
+    productId: string,
+    data: FormData
+  ): Promise<ProductResponse> => {
+    const response = await apiClient.put<ProductResponse>(
+      `${PRODUCT_ENDPOINTS.UPDATE}?product_id=${productId}`,
       data,
       {
         headers: {
