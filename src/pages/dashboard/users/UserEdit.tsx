@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -9,21 +10,15 @@ import { useToast } from "@/core/hooks/use-toast";
 import { FormPageHeader, FormActions } from "@/components/shared";
 import { ROUTES } from "@/core/config/routes";
 import { Loader } from "@/components/loader/Loader";
-
-type UserFormData = {
-  first_name: string;
-  last_name: string;
-  email: string;
-  password: string;
-  phone_number: string;
-  role: "admin" | "superadmin";
-};
+import { userService } from "@/features/dashboard/users/services/userService";
+import { User, UserFormData } from "@/features/dashboard/users/types";
 
 export default function UserEdit() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const userId = searchParams.get("id");
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const [formData, setFormData] = useState<UserFormData>({
     first_name: "",
@@ -33,7 +28,47 @@ export default function UserEdit() {
     phone_number: "",
     role: "admin",
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { data: usersData, isLoading: isFetching } = useQuery({
+    queryKey: ["users"],
+    queryFn: () => userService.getUsers(),
+    enabled: !!userId,
+  });
+
+  useEffect(() => {
+    if (usersData?.users && userId) {
+      const user = usersData.users.find((u) => u._id === userId);
+      if (user) {
+        setFormData({
+          first_name: user.first_name,
+          last_name: user.last_name,
+          email: user.email,
+          phone_number: user.phone_number || "",
+          role: user.role as "admin" | "superadmin" | "customer",
+          password: "", // Don't populate password
+        });
+      }
+    }
+  }, [usersData, userId]);
+
+  const updateMutation = useMutation({
+    mutationFn: (data: UserFormData) => userService.updateUser(userId!, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      toast({
+        title: "Success",
+        description: "User updated successfully",
+      });
+      navigate(ROUTES.DASHBOARD.USERS);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to update user",
+        variant: "destructive",
+      });
+    },
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +77,7 @@ export default function UserEdit() {
       toast({
         title: "Error",
         description: "First name and last name are required",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
@@ -51,7 +86,7 @@ export default function UserEdit() {
       toast({
         title: "Error",
         description: "Valid email is required",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
@@ -60,24 +95,22 @@ export default function UserEdit() {
       toast({
         title: "Error",
         description: "Password must be at least 6 characters",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
 
-    setIsSubmitting(true);
+    const submitData = { ...formData };
+    if (!submitData.password) {
+      delete submitData.password;
+    }
 
-    // Simulate API call
-    setTimeout(() => {
-      toast({
-        title: "User updated",
-        description: "The user has been updated successfully.",
-      });
-
-      setIsSubmitting(false);
-      navigate(ROUTES.DASHBOARD.USERS);
-    }, 1000);
+    updateMutation.mutate(submitData);
   };
+
+  if (isFetching) {
+    return <Loader fullScreen message="Fetching user details..." />;
+  }
 
   return (
     <div className="space-y-6">
@@ -141,7 +174,7 @@ export default function UserEdit() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Security</CardTitle>
+            <CardTitle>Security & Role</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -179,9 +212,10 @@ export default function UserEdit() {
         <FormActions
           cancelPath={ROUTES.DASHBOARD.USERS}
           submitLabel="Update User"
+          isSubmitting={updateMutation.isPending}
         />
       </form>
-      {isSubmitting && <Loader fullScreen message="Updating user..." />}
+      {updateMutation.isPending && <Loader fullScreen message="Updating user..." />}
     </div>
   );
 }

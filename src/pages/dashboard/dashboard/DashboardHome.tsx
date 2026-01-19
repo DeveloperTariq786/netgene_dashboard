@@ -1,97 +1,54 @@
+import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ShoppingCart, Package, Tag, Eye, FolderOpen, Layers } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
-import { useState, useEffect } from "react";
 import { ROUTES } from "@/core/config/routes";
+import { dashboardService } from "@/features/dashboard/services";
+import { orderService } from "@/features/dashboard/orders/services";
+import { OrderStatus } from "@/features/dashboard/orders/types";
 import { Loader } from "@/components/loader/Loader";
-
-type Order = {
-  id: string;
-  customer: string;
-  date: string;
-  status: "Pending" | "Processing" | "Shipped" | "Delivered" | "Cancelled";
-  amount: number;
-};
-
-const mockRecentOrders: Order[] = [{
-  id: "ORD-001",
-  customer: "Developers Tariq",
-  date: "Jun 9, 2025",
-  status: "Pending",
-  amount: 112.00
-}, {
-  id: "ORD-002",
-  customer: "John Smith",
-  date: "Jun 8, 2025",
-  status: "Processing",
-  amount: 245.50
-}, {
-  id: "ORD-003",
-  customer: "Sarah Johnson",
-  date: "Jun 8, 2025",
-  status: "Shipped",
-  amount: 89.99
-}, {
-  id: "ORD-004",
-  customer: "Mike Brown",
-  date: "Jun 7, 2025",
-  status: "Delivered",
-  amount: 156.75
-}, {
-  id: "ORD-005",
-  customer: "Emily Davis",
-  date: "Jun 7, 2025",
-  status: "Pending",
-  amount: 299.00
-}];
 
 export default function DashboardHome() {
   const navigate = useNavigate();
-  const [currentPage, setCurrentPage] = useState(1);
-  const [isLoading, setIsLoading] = useState(true);
-  const itemsPerPage = 5;
 
-  useEffect(() => {
-    // Simulate data fetching
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, []);
+  const { data: ordersData, isLoading: isLoadingOrders, error: ordersError } = useQuery({
+    queryKey: ["recentOrders"],
+    queryFn: () => orderService.fetchOrders(1, 5),
+  });
 
-  // Mock data - replace with actual data from backend
-  const stats = {
-    totalOrders: 2350,
-    totalProducts: 456,
-    totalBrands: 28,
-    totalCategories: 15,
-    totalSubCategories: 48
+  const { data: statsData, isLoading: isLoadingStats } = useQuery({
+    queryKey: ["dashboardStats"],
+    queryFn: () => dashboardService.getDashboardData(),
+  });
+
+  const recentOrders = ordersData?.orders || [];
+  const stats = statsData?.data || {
+    totalOrders: 0,
+    totalProducts: 0,
+    totalBrands: 0,
+    totalCategories: 0,
+    totalSubCategories: 0,
   };
 
-  const getStatusColor = (status: Order["status"]) => {
-    switch (status) {
-      case "Pending":
-        return "bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20";
-      case "Processing":
+  const getStatusColor = (status: OrderStatus) => {
+    switch (status.toLowerCase()) {
+      case "processing":
         return "bg-blue-500/10 text-blue-500 hover:bg-blue-500/20";
-      case "Shipped":
-        return "bg-purple-500/10 text-purple-500 hover:bg-purple-500/20";
-      case "Delivered":
+      case "confirmed":
         return "bg-green-500/10 text-green-500 hover:bg-green-500/20";
-      case "Cancelled":
+      case "shipping":
+        return "bg-purple-500/10 text-purple-500 hover:bg-purple-500/20";
+      case "delivered":
+        return "bg-green-500/10 text-green-500 hover:bg-green-500/20";
+      case "cancelled":
         return "bg-red-500/10 text-red-500 hover:bg-red-500/20";
       default:
         return "bg-gray-500/10 text-gray-500 hover:bg-gray-500/20";
     }
   };
-
-  const totalPages = Math.ceil(mockRecentOrders.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedOrders = mockRecentOrders.slice(startIndex, startIndex + itemsPerPage);
 
   return (
     <div className="space-y-6">
@@ -183,63 +140,50 @@ export default function DashboardHome() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedOrders.map(order => (
-                  <TableRow key={order.id}>
-                    <TableCell className="font-medium">{order.id}</TableCell>
-                    <TableCell>{order.customer}</TableCell>
-                    <TableCell>{order.date}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className={getStatusColor(order.status)}>
-                        {order.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right font-semibold">₹{order.amount.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" onClick={() => navigate(ROUTES.DASHBOARD.ORDER_DETAIL(order.id))}>
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Order
-                      </Button>
+                {(isLoadingOrders || isLoadingStats) ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-20">
+                      <Loader message="Loading dashboard data..." />
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : ordersError || recentOrders.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                      {ordersError ? "Error loading orders" : "No recent orders found"}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  recentOrders.map((order) => (
+                    <TableRow key={order._id}>
+                      <TableCell className="font-medium text-primary">{order.order_id}</TableCell>
+                      <TableCell>{order.customer_id ? `${order.customer_id.first_name} ${order.customer_id.last_name}` : 'Unknown Customer'}</TableCell>
+                      <TableCell>{new Date(order.createdAt).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className={getStatusColor(order.order_status)}>
+                          {order.order_status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-foreground">₹{order.total_amount.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="hover:bg-primary/10 hover:text-primary transition-colors"
+                          onClick={() => navigate(ROUTES.DASHBOARD.ORDER_DETAIL(order._id))}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          View Order
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>
         </CardContent>
-        {totalPages > 1 && (
-          <div className="p-4 border-t">
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                  />
-                </PaginationItem>
-                {[...Array(totalPages)].map((_, i) => (
-                  <PaginationItem key={i + 1}>
-                    <PaginationLink
-                      onClick={() => setCurrentPage(i + 1)}
-                      isActive={currentPage === i + 1}
-                      className="cursor-pointer"
-                    >
-                      {i + 1}
-                    </PaginationLink>
-                  </PaginationItem>
-                ))}
-                <PaginationItem>
-                  <PaginationNext
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          </div>
-        )}
       </Card>
-
-      {isLoading && <Loader fullScreen message="Loading dashboard..." />}
+      {(isLoadingOrders || isLoadingStats) && <Loader fullScreen message="Loading dashboard..." />}
     </div>
   );
 }

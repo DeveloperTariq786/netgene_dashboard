@@ -1,43 +1,44 @@
-import { apiClient } from '@/core/api/axios';
-import { USER_ENDPOINTS } from '@/core/api/endpoint';
-
-export interface CreateUserData {
-  first_name: string;
-  last_name: string;
-  email: string;
-  password: string;
-  phone_number: string;
-  role: 'admin' | 'superadmin';
-}
+import { apiClient } from '@/core/api/axios/client';
+import { USER_ENDPOINTS } from '@/core/api/endpoint/endpoints';
+import { User, UserFormData } from '../types';
 
 export interface UserResponse {
   success: boolean;
   message: string;
-  User: {
-    _id: string;
-    first_name: string;
-    last_name: string;
-    email: string;
-    phone_number: string;
-    role: string;
-    permission_component: Array<{
-      can_add_superadmin: boolean;
-      can_add_admin: boolean;
-      can_add_records: boolean;
-      can_update_records: boolean;
-      can_delete_records: boolean;
-      _id: string;
-    }>;
-    createdAt: string;
-    updatedAt: string;
-  };
+  users: User[];
+}
+
+export interface SingleUserResponse {
+  success: boolean;
+  message: string;
+  user: User;
 }
 
 export const userService = {
-  createUser: async (data: CreateUserData): Promise<UserResponse> => {
-    const response = await apiClient.post<UserResponse>(
+  getUsers: async (): Promise<UserResponse> => {
+    const response = await apiClient.get<UserResponse>(USER_ENDPOINTS.LIST);
+    return response.data;
+  },
+
+  createUser: async (data: UserFormData): Promise<SingleUserResponse> => {
+    const response = await apiClient.post<SingleUserResponse>(
       USER_ENDPOINTS.CREATE,
       data
+    );
+    return response.data;
+  },
+
+  updateUser: async (userId: string, data: UserFormData): Promise<SingleUserResponse> => {
+    const response = await apiClient.put<SingleUserResponse>(
+      `${USER_ENDPOINTS.UPDATE}?user_id=${userId}`,
+      data
+    );
+    return response.data;
+  },
+
+  deleteUser: async (userId: string): Promise<{ success: boolean; message: string }> => {
+    const response = await apiClient.delete<{ success: boolean; message: string }>(
+      `${USER_ENDPOINTS.DELETE}/${userId}`
     );
     return response.data;
   },

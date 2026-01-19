@@ -50,9 +50,9 @@ export default function ProductEdit() {
     tags: currentProduct?.tags?.map(t => t.tag_name) || [],
     price: currentProduct?.product_price || 0,
     discount: currentProduct?.discount_precentage || 0,
-    newBadge: currentProduct?.isNew === "true",
-    salesBadge: currentProduct?.sales === "true",
-    featured: currentProduct?.featured === "true",
+    newBadge: currentProduct?.isNew === true || currentProduct?.isNew === "1" || currentProduct?.isNew === "true",
+    salesBadge: currentProduct?.sales === true || currentProduct?.sales === "1" || currentProduct?.sales === "true",
+    featured: currentProduct?.featured === true || currentProduct?.featured === "1" || currentProduct?.featured === "true",
     avatar: currentProduct?.avatar || "",
     avatarFile: null,
     coverImages: currentProduct?.cover_images?.map(img => img.url) || [],
@@ -81,10 +81,10 @@ export default function ProductEdit() {
       apiFormData.append('product_description', formData.description);
       apiFormData.append('product_price', formData.price.toString());
       apiFormData.append('discount_percentage', formData.discount.toString());
-      apiFormData.append('sales', formData.salesBadge.toString());
-      apiFormData.append('featured', formData.featured.toString());
+      apiFormData.append('sales', formData.salesBadge ? "1" : "0");
+      apiFormData.append('featured', formData.featured ? "1" : "0");
       apiFormData.append('manufacturer', formData.manufacturer);
-      apiFormData.append('isNew', formData.newBadge.toString());
+      apiFormData.append('isNew', formData.newBadge ? "1" : "0");
 
       // Append avatar if a new file was selected
       if (formData.avatarFile) {

@@ -4,13 +4,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Tag, Plus, Loader2 } from "lucide-react";
 import { dimensionService } from "../services";
-import { toast } from "sonner";
+import { useToast } from "@/core/hooks/use-toast";
 
 interface ManageUnitsDialogProps {
     onUnitsChange?: (units: string[]) => void;
 }
 
 export function ManageUnitsDialog({ onUnitsChange }: ManageUnitsDialogProps) {
+    const { toast } = useToast();
     const [open, setOpen] = useState(false);
     const [units, setUnits] = useState<string[]>([]);
     const [newUnit, setNewUnit] = useState("");
@@ -35,7 +36,11 @@ export function ManageUnitsDialog({ onUnitsChange }: ManageUnitsDialogProps) {
             }
         } catch (error: any) {
             console.error("Error fetching metrics:", error);
-            toast.error(error?.response?.data?.message || "Failed to load dimensions");
+            toast({
+                title: "Error",
+                description: error?.response?.data?.message || "Failed to load dimensions",
+                variant: "destructive",
+            });
         } finally {
             setIsLoadingUnits(false);
         }
@@ -43,12 +48,20 @@ export function ManageUnitsDialog({ onUnitsChange }: ManageUnitsDialogProps) {
 
     const handleAddUnit = async () => {
         if (!newUnit.trim()) {
-            toast.error("Please enter a unit name");
+            toast({
+                title: "Error",
+                description: "Please enter a unit name",
+                variant: "destructive",
+            });
             return;
         }
 
         if (units.includes(newUnit.trim().toLowerCase())) {
-            toast.error("This unit already exists");
+            toast({
+                title: "Error",
+                description: "This unit already exists",
+                variant: "destructive",
+            });
             return;
         }
 
@@ -60,13 +73,20 @@ export function ManageUnitsDialog({ onUnitsChange }: ManageUnitsDialogProps) {
 
             if (response.success) {
                 setNewUnit("");
-                toast.success(response.message || "Dimension added successfully");
+                toast({
+                    title: "Success",
+                    description: response.message || "Dimension added successfully",
+                });
                 // Refetch all metrics to ensure we have the latest data
                 await fetchMetrics();
             }
         } catch (error: any) {
             console.error("Error adding metrics:", error);
-            toast.error(error?.response?.data?.message || "Failed to add dimension");
+            toast({
+                title: "Error",
+                description: error?.response?.data?.message || "Failed to add dimension",
+                variant: "destructive",
+            });
         } finally {
             setIsAddingUnit(false);
         }

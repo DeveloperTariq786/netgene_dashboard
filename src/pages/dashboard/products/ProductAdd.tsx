@@ -176,10 +176,10 @@ export default function ProductAdd() {
       const selectedDimension = dimensions.find(d => d._id === formData.dimensionId);
       apiFormData.append('dimensions', selectedDimension?.dimension_name || '');
 
-      apiFormData.append('sales', formData.salesBadge.toString());
-      apiFormData.append('featured', formData.featured.toString());
+      apiFormData.append('sales', formData.salesBadge ? "1" : "0");
+      apiFormData.append('featured', formData.featured ? "1" : "0");
       apiFormData.append('manufacturer', formData.manufacturer);
-      apiFormData.append('isNew', formData.newBadge.toString());
+      apiFormData.append('isNew', formData.newBadge ? "1" : "0");
       apiFormData.append('avatar', formData.avatarFile);
 
       // Append tags individually

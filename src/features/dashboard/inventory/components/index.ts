@@ -1,3 +1,6 @@
 export { ManageUnitsDialog } from "./ManageUnitsDialog";
-// Inventory-specific components will go here
-// For now, inventory uses shared components from @/components/shared
+export { AddInventory } from "./AddInventory";
+export { InventoryItemRow } from "./InventoryItemRow";
+export { RecentBills } from "./RecentBills";
+export { BillSummary } from "./BillSummary";
+export { ManageSuppliersDialog } from "./ManageSuppliersDialog";

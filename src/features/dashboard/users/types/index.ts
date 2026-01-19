@@ -1,23 +1,36 @@
 // User-specific TypeScript types and interfaces
 
+export interface UserPermission {
+  can_add_superadmin: boolean;
+  can_add_admin: boolean;
+  can_add_records: boolean;
+  can_update_records: boolean;
+  can_read_records: boolean;
+  can_delete_records: boolean;
+  is_customer: boolean;
+  _id: string;
+}
+
 export interface User {
-  id: string;
-  name: string;
+  _id: string;
+  first_name: string;
+  last_name: string;
   email: string;
-  phone?: string;
-  role: "admin" | "manager" | "user";
-  avatar?: string;
-  status: "active" | "inactive" | "suspended";
+  phone_number?: string;
+  password?: string;
+  role: "customer" | "admin" | "superadmin";
+  permission_component: UserPermission[];
   createdAt: string;
   updatedAt: string;
+  __v: number;
 }
 
 export interface UserFormData {
-  name: string;
+  first_name: string;
+  last_name: string;
   email: string;
-  phone?: string;
+  phone_number?: string;
   password?: string;
-  role: "admin" | "manager" | "user";
-  avatar?: File;
-  status: "active" | "inactive" | "suspended";
+  role: "customer" | "admin" | "superadmin";
+  permission_component?: Partial<UserPermission>[];
 }

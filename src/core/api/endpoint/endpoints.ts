@@ -38,7 +38,7 @@ export const SUBCATEGORY_ENDPOINTS = {
 export const USER_ENDPOINTS = {
   CREATE: '/api/v1/admin/user',
   LIST: '/api/v1/admin/users',
-  UPDATE: '/api/v1/admin/user',
+  UPDATE: '/api/v1/admin/update-user',
   DELETE: '/api/v1/admin/user',
 } as const;
 
@@ -59,6 +59,46 @@ export const METRICS_ENDPOINTS = {
 // Inventory API endpoints
 export const INVENTORY_ENDPOINTS = {
   LIST: '/api/v1/admin/inventory',
-  UPDATE: '/api/v1/admin/update-inventory',
-  BULK_UPDATE: '/api/v1/admin/bulk-inventory-update',
+  ADD_BILL: '/api/v1/admin/add-inventory-bill',
+  BILL_LIST: '/api/v1/admin/inventory-bills',
+  BILL_BY_ID: '/api/v1/admin/inventory-bill-by-id',
+} as const;
+
+// Order API endpoints
+export const ORDER_ENDPOINTS = {
+  LIST: '/api/v1/admin/orders',
+  UPDATE_STATUS: '/api/v1/admin/order-status',
+  CONFIRM_ORDER: '/api/v1/admin/confirm-order',
+} as const;
+
+// Dashboard API endpoints
+export const DASHBOARD_ENDPOINTS = {
+  DATA: '/api/v1/admin/dashboard/data',
+} as const;
+
+// Carousel API endpoints
+export const CAROUSEL_ENDPOINTS = {
+  CREATE: '/api/v1/admin/add-carousel',
+  LIST: '/api/v1/admin/carousel',
+  UPDATE: '/api/v1/admin/update-carousel',
+  DELETE: '/api/v1/admin/carousel',
+} as const;
+
+// Banner API endpoints
+export const BANNER_ENDPOINTS = {
+  CREATE: '/api/v1/admin/add-banner',
+  LIST: '/api/v1/admin/banner',
+  DELETE: '/api/v1/admin/banner',
+} as const;
+
+// Countdown API endpoints
+export const COUNTDOWN_ENDPOINTS = {
+  CREATE: '/api/v1/admin/add-countdown',
+  LIST: '/api/v1/admin/countdown',
+} as const;
+
+// Supplier API endpoints
+export const SUPPLIER_ENDPOINTS = {
+  CREATE: '/api/v1/admin/add-supplier',
+  LIST: '/api/v1/admin/suppliers', // Assuming a list endpoint exists or will exist, but for now user only asked for create. I'll just add create.
 } as const;

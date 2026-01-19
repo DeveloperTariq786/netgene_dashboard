@@ -38,9 +38,9 @@ export interface Product {
   }>;
   dimensions: string;
   manufacturer: string;
-  sales: string;
-  featured: string;
-  isNew: string;
+  sales: string | boolean;
+  featured: string | boolean;
+  isNew: string | boolean;
   tags: ProductTag[];
   created_by: string;
   product_reviews: any[];

@@ -1,4 +1,4 @@
-import { LayoutDashboard, Package, ShoppingCart, Users, FolderOpen, Layers, Tag, ClipboardList } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, Users, FolderOpen, Layers, Tag, ClipboardList, Megaphone } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, useSidebar } from "@/components/ui/sidebar";
 import { ProfileMenu } from "@/components/shared/ProfileMenu";
@@ -38,6 +38,10 @@ const dashboardItems = [{
   title: "Inventory",
   url: ROUTES.DASHBOARD.INVENTORY,
   icon: ClipboardList
+}, {
+  title: "Promotions",
+  url: ROUTES.DASHBOARD.PROMOTIONS,
+  icon: Megaphone
 }];
 
 export function AppSidebar() {

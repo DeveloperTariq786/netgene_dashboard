@@ -24,8 +24,7 @@ const Users = lazy(() => import("@/pages/dashboard/users/Users"));
 const UserAdd = lazy(() => import("@/pages/dashboard/users/UserAdd"));
 const UserEdit = lazy(() => import("@/pages/dashboard/users/UserEdit"));
 const Inventory = lazy(() => import("@/pages/dashboard/inventory/Inventory"));
-const InventoryEdit = lazy(() => import("@/pages/dashboard/inventory/InventoryEdit"));
-const InventoryBulkUpdate = lazy(() => import("@/pages/dashboard/inventory/InventoryBulkUpdate"));
+const Promotions = lazy(() => import("@/pages/dashboard/promotions/Promotions"));
 
 // Route path constants
 export const ROUTES = {
@@ -51,8 +50,7 @@ export const ROUTES = {
     ORDERS: "/dashboard/orders",
     ORDER_DETAIL: (id: string) => `/dashboard/orders/${id}`,
     INVENTORY: "/dashboard/inventory",
-    INVENTORY_EDIT: (id: string) => `/dashboard/inventory/edit/${id}`,
-    INVENTORY_BULK_UPDATE: "/dashboard/inventory/bulk-update",
+    PROMOTIONS: "/dashboard/promotions",
   },
 } as const;
 
@@ -161,13 +159,10 @@ export const routeConfig: RouteConfig[] = [
         path: "inventory",
         element: Inventory,
       },
+      // Promotions
       {
-        path: "inventory/edit/:inventoryId",
-        element: InventoryEdit,
-      },
-      {
-        path: "inventory/bulk-update",
-        element: InventoryBulkUpdate,
+        path: "promotions",
+        element: Promotions,
       },
     ],
   },

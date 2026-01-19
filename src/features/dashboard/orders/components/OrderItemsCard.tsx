@@ -28,16 +28,26 @@ export function OrderItemsCard({ items }: OrderItemsCardProps) {
           </TableHeader>
           <TableBody>
             {items.map(item => (
-              <TableRow key={item.id}>
+              <TableRow key={item._id}>
                 <TableCell>
                   <div className="flex items-center gap-3">
-                    <img src={item.image} alt={item.product} className="h-10 w-10 rounded object-cover" />
-                    <span className="font-medium">{item.product}</span>
+                    <img
+                      src={item.product_logo}
+                      alt={item.product_name}
+                      className="h-10 w-10 rounded object-cover border"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = "/placeholder.svg";
+                      }}
+                    />
+                    <div>
+                      <span className="font-medium block">{item.product_name}</span>
+                      <span className="text-xs text-muted-foreground">{item.product_brand} | {item.product_dimension}</span>
+                    </div>
                   </div>
                 </TableCell>
-                <TableCell className="text-center">x{item.qty}</TableCell>
-                <TableCell className="text-right">₹{item.unitPrice.toFixed(2)}</TableCell>
-                <TableCell className="text-right">₹{item.total.toFixed(2)}</TableCell>
+                <TableCell className="text-center">x{item.no_of_products}</TableCell>
+                <TableCell className="text-right">₹{item.product_price.toFixed(2)}</TableCell>
+                <TableCell className="text-right">₹{item.total_price.toFixed(2)}</TableCell>
               </TableRow>
             ))}
           </TableBody>

@@ -1,9 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MapPin } from "lucide-react";
-import type { OrderShipping } from "../types";
+import { MapPin, Phone, Mail } from "lucide-react";
+import type { ShippingAddress } from "../types";
 
 interface ShippingInformationCardProps {
-  shipping: OrderShipping;
+  shipping: ShippingAddress;
 }
 
 export function ShippingInformationCard({ shipping }: ShippingInformationCardProps) {
@@ -15,22 +15,26 @@ export function ShippingInformationCard({ shipping }: ShippingInformationCardPro
           Shipping Information
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         <div>
-          <p className="text-sm text-muted-foreground">Recipient:</p>
-          <p className="font-medium">{shipping.recipient}</p>
+          <p className="text-sm text-muted-foreground mb-1">Recipient</p>
+          <p className="font-medium">{`${shipping.first_name} ${shipping.last_name}`}</p>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+            <Mail className="h-3 w-3" />
+            <span>{shipping.email}</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+            <Phone className="h-3 w-3" />
+            <span>{shipping.phone_number}</span>
+          </div>
         </div>
         <div>
-          <p className="text-sm text-muted-foreground">Address:</p>
-          <p className="font-medium">{shipping.address}</p>
-        </div>
-        <div>
-          <p className="text-sm text-muted-foreground">Mobile:</p>
-          <p className="font-medium">{shipping.mobile}</p>
-        </div>
-        <div>
-          <p className="text-sm text-muted-foreground">Type:</p>
-          <p className="font-medium">{shipping.type}</p>
+          <p className="text-sm text-muted-foreground mb-1">Address</p>
+          <p className="font-medium leading-relaxed">
+            {shipping.address},<br />
+            {shipping.city}, {shipping.state}<br />
+            {shipping.country} - {shipping.postal_code}
+          </p>
         </div>
       </CardContent>
     </Card>

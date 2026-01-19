@@ -164,22 +164,22 @@ export default function Products() {
                       <TableCell>{categories.get(product.product_category) || "-"}</TableCell>
                       <TableCell>{subcategories.get(product.product_sub_category) || "-"}</TableCell>
                       <TableCell>{product.manufacturer || "-"}</TableCell>
-                      <TableCell>${product.product_price.toFixed(2)}</TableCell>
+                      <TableCell>₹{product.product_price.toFixed(2)}</TableCell>
                       <TableCell className="text-red-600 font-medium">{product.discount_precentage}%</TableCell>
-                      <TableCell className="font-semibold text-emerald-600">${product.final_price.toFixed(2)}</TableCell>
+                      <TableCell className="font-semibold text-emerald-600">₹{product.final_price.toFixed(2)}</TableCell>
                       <TableCell>
                         <div className="flex gap-1 flex-wrap">
-                          {product.isNew === "true" && (
+                          {(product.isNew === true || product.isNew === "1" || product.isNew === "true") && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-600">
                               New
                             </span>
                           )}
-                          {product.sales === "true" && (
+                          {(product.sales === true || product.sales === "1" || product.sales === "true") && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-destructive/10 text-destructive">
                               Sale
                             </span>
                           )}
-                          {product.featured === "true" && (
+                          {(product.featured === true || product.featured === "1" || product.featured === "true") && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500/10 text-purple-600">
                               Featured
                             </span>

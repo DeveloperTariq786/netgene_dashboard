@@ -1,101 +1,78 @@
 import { useNavigate, useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, ChevronDown } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "@/core/hooks/use-toast";
 import { ROUTES } from "@/core/config/routes";
+import { orderService } from "@/features/dashboard/orders/services";
 import {
   CustomerDetailsCard,
   ShippingInformationCard,
   OrderItemsCard,
   PriceSummaryCard,
-  OrderHistoryCard,
+  UpdateOrderStatusCard,
 } from "@/features/dashboard/orders";
+
 export default function OrderDetail() {
   const navigate = useNavigate();
-  const {
-    orderId
-  } = useParams();
+  const { orderId } = useParams<{ orderId: string }>();
 
-  // Mock order data
-  const orderData = {
-    id: orderId || "ORD-001",
-    currentStatus: "Processing",
-    placedOn: "Jun 9, 2025, 02:50 PM",
-    lastUpdated: "Jun 9, 2025, 02:55 PM",
-    customer: {
-      name: "Developers Tariq",
-      phone: "7889396003"
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["orders", "detail", orderId],
+    queryFn: async () => {
+      // Since there is no detail endpoint, we fetch all (or a large batch) and find the one we need
+      const response = await orderService.fetchOrders(1, 100);
+      const foundOrder = response.orders.find(o => o._id === orderId);
+      if (!foundOrder) throw new Error("Order not found");
+      return foundOrder;
     },
-    shipping: {
-      recipient: "Developer Tariq",
-      address: "Baba Pora Budgam, Jammu and Kashmir - 191111",
-      mobile: "7889396003",
-      type: "Home"
-    },
-    items: [{
-      id: 1,
-      product: "abc",
-      image: "/placeholder.svg",
-      qty: 1,
-      unitPrice: 100.00,
-      total: 100.00
-    }],
-    pricing: {
-      subtotal: 100.00,
-      discount: -0.00,
-      shipping: 0.00,
-      tax: 12.00,
-      grandTotal: 112.00
-    },
-    history: [{
-      id: 1,
-      status: "Pending",
-      description: "Order created",
-      previousStatus: "Pending",
-      timestamp: "Jun 9, 2025, 02:50 PM"
-    }, {
-      id: 2,
-      status: "Processing",
-      description: "Order is being processed",
-      previousStatus: "Pending",
-      timestamp: "Jun 9, 2025, 02:55 PM"
-    }, {
-      id: 3,
-      status: "Confirmed",
-      description: "Order confirmed",
-      previousStatus: "Processing",
-      timestamp: "Jun 9, 2025, 03:00 PM"
-    }]
-  };
+    enabled: !!orderId,
+  });
+
+  const order = data;
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
-      "Pending": "bg-yellow-500 hover:bg-yellow-500",
-      "Processing": "bg-blue-500 hover:bg-blue-500",
-      "Confirmed": "bg-green-500 hover:bg-green-500",
-      "Shipped": "bg-purple-500 hover:bg-purple-500",
-      "Out for Delivery": "bg-orange-500 hover:bg-orange-500",
-      "Delivered": "bg-green-600 hover:bg-green-600",
-      "Cancelled": "bg-red-500 hover:bg-red-500"
+      processing: "bg-blue-500 hover:bg-blue-500",
+      confirmed: "bg-green-500 hover:bg-green-500",
+      shipping: "bg-purple-500 hover:bg-purple-500",
+      delivered: "bg-green-600 hover:bg-green-600",
+      cancelled: "bg-red-500 hover:bg-red-500",
     };
-    return colors[status] || "bg-gray-500 hover:bg-gray-500";
+    return colors[status.toLowerCase()] || "bg-gray-500 hover:bg-gray-500";
   };
 
-  const handlePrintInvoice = () => {
-    toast({
-      title: "Printing Invoice",
-      description: "Invoice is being prepared for printing..."
-    });
-  };
   const handleStatusChange = (status: string) => {
     toast({
       title: "Status Updated",
-      description: `Order status changed to: ${status}`
+      description: `Order status changed to: ${status}`,
     });
   };
-  return <div className="space-y-6">
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-muted-foreground animate-pulse">Fetching order details...</p>
+      </div>
+    );
+  }
+
+  if (error || !order) {
+    return (
+      <div className="text-center py-12">
+        <h2 className="text-2xl font-bold text-destructive mb-2">Error</h2>
+        <p className="text-muted-foreground mb-6">Failed to load order details. Please try again later.</p>
+        <Button onClick={() => navigate(ROUTES.DASHBOARD.ORDERS)}>
+          Back to Orders
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
       {/* Header */}
       <div>
         <Button variant="ghost" className="mb-4" onClick={() => navigate(ROUTES.DASHBOARD.ORDERS)}>
@@ -105,62 +82,33 @@ export default function OrderDetail() {
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold text-primary">Order #{orderData.id}</h1>
-              <Badge className={`${getStatusColor(orderData.currentStatus)} text-white`}>
-                {orderData.currentStatus}
+              <h1 className="text-3xl font-bold text-primary">Order #{order.order_id}</h1>
+              <Badge className={`${getStatusColor(order.order_status)} text-white capitalize`}>
+                {order.order_status}
               </Badge>
             </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              Placed on {new Date(order.createdAt).toLocaleString()}
+            </p>
           </div>
-          <div className="flex gap-2">
-            
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline">
-                  Update Status
-                  <ChevronDown className="h-4 w-4 ml-2" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={() => handleStatusChange("Pending")}>
-                  Change to Pending
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleStatusChange("Processing")}>
-                  Change to Processing
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleStatusChange("Confirmed")}>
-                  Change to Confirmed
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleStatusChange("Shipped")}>
-                  Change to Shipped
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleStatusChange("Out for Delivery")}>
-                  Change to Out for Delivery
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleStatusChange("Delivered")}>
-                  Change to Delivered
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleStatusChange("Cancelled")} className="text-destructive">
-                  Cancel Order
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+          {/* Status update dropdown removed, now handled by UpdateOrderStatusCard */}
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column */}
         <div className="lg:col-span-1 space-y-6">
-          <CustomerDetailsCard customer={orderData.customer} />
-          <ShippingInformationCard shipping={orderData.shipping} />
+          <UpdateOrderStatusCard orderId={order._id} currentStatus={order.order_status} />
+          <CustomerDetailsCard customer={order.customer_id} />
+          <ShippingInformationCard shipping={order.shipping_address} />
         </div>
 
         {/* Right Column */}
         <div className="lg:col-span-2 space-y-6">
-          <OrderItemsCard items={orderData.items} />
-          <PriceSummaryCard pricing={orderData.pricing} />
-          <OrderHistoryCard history={orderData.history} />
+          <OrderItemsCard items={order.order_items} />
+          <PriceSummaryCard totalAmount={order.total_amount} />
         </div>
       </div>
-    </div>;
+    </div>
+  );
 }

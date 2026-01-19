@@ -1,75 +1,50 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Plus, Search, Pencil, Trash2, User } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Plus, Search, Pencil, Trash2, User as UserIcon } from "lucide-react";
 import { useToast } from "@/core/hooks/use-toast";
-import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { ROUTES } from "@/core/config/routes";
 import { Loader } from "@/components/loader/Loader";
-
-interface UserData {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone_number: string;
-  role: "user" | "admin" | "super admin";
-}
+import { userService } from "@/features/dashboard/users/services/userService";
 
 export default function Users() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [isLoading, setIsLoading] = useState(true);
   const itemsPerPage = 10;
 
-  useEffect(() => {
-    // Simulate data fetching
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, []);
+  const { data, isLoading } = useQuery({
+    queryKey: ["users"],
+    queryFn: () => userService.getUsers(),
+  });
 
-  const [users, setUsers] = useState<UserData[]>([
-    {
-      id: "1",
-      first_name: "Tariq",
-      last_name: "Mir",
-      email: "tariq@gmail.com",
-      phone_number: "123467889",
-      role: "super admin"
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => userService.deleteUser(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      toast({
+        title: "Success",
+        description: "User deleted successfully"
+      });
     },
-    {
-      id: "2",
-      first_name: "John",
-      last_name: "Doe",
-      email: "john@example.com",
-      phone_number: "987654321",
-      role: "admin"
-    },
-    {
-      id: "3",
-      first_name: "Sarah",
-      last_name: "Smith",
-      email: "sarah@example.com",
-      phone_number: "555123456",
-      role: "user"
-    },
-    {
-      id: "4",
-      first_name: "Michael",
-      last_name: "Johnson",
-      email: "michael@example.com",
-      phone_number: "444567890",
-      role: "user"
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete user",
+        variant: "destructive"
+      });
     }
-  ]);
+  });
+
+  const users = data?.users || [];
 
   const filteredUsers = users.filter(user =>
     user.first_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -82,11 +57,9 @@ export default function Users() {
   const paginatedUsers = filteredUsers.slice(startIndex, startIndex + itemsPerPage);
 
   const handleDeleteUser = (id: string) => {
-    setUsers(users.filter(user => user.id !== id));
-    toast({
-      title: "Success",
-      description: "User deleted successfully"
-    });
+    if (confirm("Are you sure you want to delete this user?")) {
+      deleteMutation.mutate(id);
+    }
   };
 
   return (
@@ -141,17 +114,17 @@ export default function Users() {
                 {paginatedUsers.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                      No users found
+                      {isLoading ? "Loading users..." : "No users found"}
                     </TableCell>
                   </TableRow>
                 ) : (
                   paginatedUsers.map((user) => (
-                    <TableRow key={user.id}>
+                    <TableRow key={user._id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar className="h-10 w-10">
                             <AvatarFallback>
-                              <User className="h-5 w-5" />
+                              <UserIcon className="h-5 w-5" />
                             </AvatarFallback>
                           </Avatar>
                           <span className="font-medium">{user.first_name} {user.last_name}</span>
@@ -161,24 +134,26 @@ export default function Users() {
                         <span className="text-sm">{user.email}</span>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm">{user.phone_number}</span>
+                        <span className="text-sm">{user.phone_number || "N/A"}</span>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm capitalize">{user.role}</span>
+                        <span className="text-sm capitalize font-medium">{user.role}</span>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => navigate(`${ROUTES.DASHBOARD.USERS_EDIT}?id=${user.id}`)}
+                            onClick={() => navigate(`${ROUTES.DASHBOARD.USERS_EDIT}?id=${user._id}`)}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleDeleteUser(user.id)}
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => handleDeleteUser(user._id)}
+                            disabled={deleteMutation.isPending}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

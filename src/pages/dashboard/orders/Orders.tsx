@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,178 +9,54 @@ import { Search, Eye } from "lucide-react";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { ROUTES } from "@/core/config/routes";
 import { Loader } from "@/components/loader/Loader";
-
-interface Order {
-  id: string;
-  customer: string;
-  date: string;
-  status: "Pending" | "Processing" | "Shipped" | "Delivered" | "Cancelled";
-  amount: number;
-}
+import { orderService } from "@/features/dashboard/orders/services";
+import { Order, OrderStatus } from "@/features/dashboard/orders/types";
 
 export default function Orders() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 10;
 
-  useEffect(() => {
-    // Simulate data fetching
-    const timer = setTimeout(() => {
+  const loadOrders = useCallback(async (page: number) => {
+    try {
+      setIsLoading(true);
+      const data = await orderService.fetchOrders(page, itemsPerPage);
+      if (data.success) {
+        setOrders(data.orders);
+        setTotalPages(data.pagination.totalPages);
+        setCurrentPage(data.pagination.currentPage);
+      }
+    } catch (error) {
+      console.error("Failed to fetch orders:", error);
+    } finally {
       setIsLoading(false);
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, []);
-  const [orders] = useState<Order[]>([
-    {
-      id: "ORD-001",
-      customer: "Tariq Mir",
-      date: "2024-01-15",
-      status: "Delivered",
-      amount: 299.99
-    },
-    {
-      id: "ORD-002",
-      customer: "John Doe",
-      date: "2024-01-16",
-      status: "Processing",
-      amount: 499.50
-    },
-    {
-      id: "ORD-003",
-      customer: "Sarah Smith",
-      date: "2024-01-17",
-      status: "Pending",
-      amount: 199.00
-    },
-    {
-      id: "ORD-004",
-      customer: "Michael Johnson",
-      date: "2024-01-18",
-      status: "Delivered",
-      amount: 750.25
-    },
-    {
-      id: "ORD-005",
-      customer: "Emma Williams",
-      date: "2024-01-19",
-      status: "Cancelled",
-      amount: 350.00
-    },
-    {
-      id: "ORD-006",
-      customer: "David Brown",
-      date: "2024-01-20",
-      status: "Shipped",
-      amount: 425.00
-    },
-    {
-      id: "ORD-007",
-      customer: "Lisa Anderson",
-      date: "2024-01-21",
-      status: "Processing",
-      amount: 189.99
-    },
-    {
-      id: "ORD-008",
-      customer: "Robert Taylor",
-      date: "2024-01-22",
-      status: "Pending",
-      amount: 599.00
-    },
-    {
-      id: "ORD-009",
-      customer: "Jennifer Martinez",
-      date: "2024-01-23",
-      status: "Delivered",
-      amount: 329.50
-    },
-    {
-      id: "ORD-010",
-      customer: "William Garcia",
-      date: "2024-01-24",
-      status: "Shipped",
-      amount: 275.75
-    },
-    {
-      id: "ORD-011",
-      customer: "Mary Rodriguez",
-      date: "2024-01-25",
-      status: "Pending",
-      amount: 449.99
-    },
-    {
-      id: "ORD-012",
-      customer: "James Wilson",
-      date: "2024-01-26",
-      status: "Processing",
-      amount: 679.00
-    },
-    {
-      id: "ORD-013",
-      customer: "Patricia Moore",
-      date: "2024-01-27",
-      status: "Delivered",
-      amount: 159.99
-    },
-    {
-      id: "ORD-014",
-      customer: "Christopher Lee",
-      date: "2024-01-28",
-      status: "Cancelled",
-      amount: 299.00
-    },
-    {
-      id: "ORD-015",
-      customer: "Linda Harris",
-      date: "2024-01-29",
-      status: "Shipped",
-      amount: 539.99
-    },
-    {
-      id: "ORD-016",
-      customer: "Mark Thompson",
-      date: "2024-01-30",
-      status: "Pending",
-      amount: 399.00
-    },
-    {
-      id: "ORD-017",
-      customer: "Nancy Clark",
-      date: "2024-01-31",
-      status: "Processing",
-      amount: 229.50
-    },
-    {
-      id: "ORD-018",
-      customer: "Daniel Lewis",
-      date: "2024-02-01",
-      status: "Delivered",
-      amount: 789.99
     }
-  ]);
+  }, [itemsPerPage]);
+
+  useEffect(() => {
+    loadOrders(currentPage);
+  }, [currentPage, loadOrders]);
 
   const filteredOrders = orders.filter(order =>
-    order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    order.customer.toLowerCase().includes(searchQuery.toLowerCase())
+    order.order_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    `${order.customer_id.first_name} ${order.customer_id.last_name}`.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedOrders = filteredOrders.slice(startIndex, startIndex + itemsPerPage);
-
-  const getStatusColor = (status: Order["status"]) => {
-    switch (status) {
-      case "Pending":
-        return "bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20";
-      case "Processing":
+  const getStatusColor = (status: OrderStatus) => {
+    switch (status.toLowerCase()) {
+      case "processing":
         return "bg-blue-500/10 text-blue-500 hover:bg-blue-500/20";
-      case "Shipped":
-        return "bg-purple-500/10 text-purple-500 hover:bg-purple-500/20";
-      case "Delivered":
+      case "confirmed":
         return "bg-green-500/10 text-green-500 hover:bg-green-500/20";
-      case "Cancelled":
+      case "shipping":
+        return "bg-purple-500/10 text-purple-500 hover:bg-purple-500/20";
+      case "delivered":
+        return "bg-green-500/10 text-green-500 hover:bg-green-500/20";
+      case "cancelled":
         return "bg-red-500/10 text-red-500 hover:bg-red-500/20";
       default:
         return "bg-gray-500/10 text-gray-500 hover:bg-gray-500/20";
@@ -230,29 +106,29 @@ export default function Orders() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedOrders.length === 0 ? (
+                {filteredOrders.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                       No orders found
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paginatedOrders.map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell className="font-medium">{order.id}</TableCell>
-                      <TableCell>{order.customer}</TableCell>
-                      <TableCell>{new Date(order.date).toLocaleDateString()}</TableCell>
+                  filteredOrders.map((order) => (
+                    <TableRow key={order._id}>
+                      <TableCell className="font-medium">{order.order_id}</TableCell>
+                      <TableCell>{`${order.customer_id.first_name} ${order.customer_id.last_name}`}</TableCell>
+                      <TableCell>{new Date(order.createdAt).toLocaleDateString()}</TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className={getStatusColor(order.status)}>
-                          {order.status}
+                        <Badge variant="secondary" className={getStatusColor(order.order_status)}>
+                          {order.order_status}
                         </Badge>
                       </TableCell>
-                      <TableCell>₹{order.amount.toFixed(2)}</TableCell>
+                      <TableCell>₹{order.total_amount.toFixed(2)}</TableCell>
                       <TableCell className="text-right">
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => navigate(ROUTES.DASHBOARD.ORDER_DETAIL(order.id))}
+                          onClick={() => navigate(ROUTES.DASHBOARD.ORDER_DETAIL(order._id))}
                         >
                           <Eye className="h-4 w-4 mr-2" />
                           View Order
